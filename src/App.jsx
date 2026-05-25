@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { compressFile } from './compress'
 import { db, storage, auth } from './firebase'
 import {
   collection, addDoc, onSnapshot, query,
@@ -339,16 +340,19 @@ function MarkDoneModal({ challengeId, ctx, onClose }) {
   const { session, teams, challenges, currentDay } = ctx
   const ch     = challenges.find(c => c.id === challengeId)
   const inHour = ch ? (Date.now() - ch.postedAt) <= ONE_HOUR_MS : false
-  const [file, setFile]       = useState(null)
-  const [caption, setCaption] = useState('')
+  const [file, setFile]         = useState(null)
+  const [caption, setCaption]   = useState('')
   const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
 
   async function save() {
     if (!file) { alert('Pick a photo or video first.'); return }
     setUploading(true)
+    setProgress(0)
     try {
+      const compressed = await compressFile(file, setProgress)
       const storageRef = ref(storage, `proof/${challengeId}_${session.teamId}_${Date.now()}`)
-      await uploadBytes(storageRef, file)
+      await uploadBytes(storageRef, compressed)
       const url = await getDownloadURL(storageRef)
       const mediaDoc = await addDoc(collection(db, 'media'), {
         url, type: file.type.startsWith('video') ? 'video' : 'photo',
@@ -394,7 +398,9 @@ function MarkDoneModal({ challengeId, ctx, onClose }) {
         <div className="row" style={{marginTop:10}}>
           <div className="spacer" />
           <button className="btn secondary small" onClick={onClose}>Cancel</button>
-          <button className="btn small" onClick={save} disabled={uploading}>{uploading ? 'Uploading…' : 'Save & mark done'}</button>
+          <button className="btn small" onClick={save} disabled={uploading}>
+            {uploading ? `${progress < 100 ? `Compressing… ${progress}%` : 'Uploading…'}` : 'Save & mark done'}
+          </button>
         </div>
       </div>
     </div>
@@ -406,16 +412,19 @@ function ChugProofModal({ chugId, ctx, onClose }) {
   const { session, teams, chugs, currentDay } = ctx
   const c    = chugs.find(x => x.id === chugId)
   const from = teams[c?.fromTeamId]?.name || '?'
-  const [file, setFile]       = useState(null)
-  const [caption, setCaption] = useState('')
+  const [file, setFile]           = useState(null)
+  const [caption, setCaption]     = useState('')
   const [uploading, setUploading] = useState(false)
+  const [progress, setProgress]   = useState(0)
 
   async function save() {
     if (!file) { alert('Pick a photo or video first.'); return }
     setUploading(true)
+    setProgress(0)
     try {
+      const compressed = await compressFile(file, setProgress)
       const storageRef = ref(storage, `chugs/${chugId}_${Date.now()}`)
-      await uploadBytes(storageRef, file)
+      await uploadBytes(storageRef, compressed)
       const url = await getDownloadURL(storageRef)
       const mediaDoc = await addDoc(collection(db, 'media'), {
         url, type: file.type.startsWith('video') ? 'video' : 'photo',
@@ -445,7 +454,9 @@ function ChugProofModal({ chugId, ctx, onClose }) {
         <div className="row" style={{marginTop:10}}>
           <div className="spacer" />
           <button className="btn secondary small" onClick={onClose}>Cancel</button>
-          <button className="btn beer small" onClick={save} disabled={uploading}>{uploading ? 'Uploading…' : 'Save proof'}</button>
+          <button className="btn beer small" onClick={save} disabled={uploading}>
+            {uploading ? `${progress < 100 ? `Compressing… ${progress}%` : 'Uploading…'}` : 'Save proof'}
+          </button>
         </div>
       </div>
     </div>
@@ -523,6 +534,7 @@ function Memories({ ctx }) {
   const isOrg = session.kind === 'org'
   const [caption, setCaption]     = useState('')
   const [uploading, setUploading] = useState(false)
+  const [progress, setProgress]   = useState(0)
   const [assignSelections, setAssignSelections] = useState({})
 
   const myUnassignedChugs = !isOrg
@@ -540,10 +552,14 @@ function Memories({ ctx }) {
   async function handleUpload(files) {
     if (!files.length) return
     setUploading(true)
-    for (const file of Array.from(files)) {
+    const all = Array.from(files)
+    for (let i = 0; i < all.length; i++) {
+      const file = all[i]
+      setProgress(0)
       try {
+        const compressed = await compressFile(file, setProgress)
         const storageRef = ref(storage, `memories/${session.teamId}_${Date.now()}_${file.name}`)
-        await uploadBytes(storageRef, file)
+        await uploadBytes(storageRef, compressed)
         const url = await getDownloadURL(storageRef)
         await addDoc(collection(db, 'media'), {
           url, type: file.type.startsWith('video') ? 'video' : 'photo',
@@ -611,7 +627,7 @@ function Memories({ ctx }) {
         <p className="muted" style={{fontSize:12}}>Any member can add to the shared feed.</p>
         <label className="drop">
           <input type="file" accept="image/*,video/*" multiple onChange={e => handleUpload(e.target.files)} disabled={uploading} />
-          <div>{uploading ? 'Uploading…' : '📷 Tap to upload a photo or video'}</div>
+          <div>{uploading ? `${progress < 100 ? `Compressing… ${progress}%` : 'Uploading…'}` : '📷 Tap to upload a photo or video'}</div>
         </label>
         <label className="field" style={{marginTop:10}}><span>Caption (optional)</span>
           <input value={caption} onChange={e => setCaption(e.target.value)} placeholder="e.g. breakfast chaos" />
