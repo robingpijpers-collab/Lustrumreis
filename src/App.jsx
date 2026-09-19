@@ -160,11 +160,11 @@ export default function App() {
         { id: 'messages',    icon: '💬', label: 'Messages'    },
         { id: 'memories',    icon: '🎞️', label: 'Memories'  },
         { id: 'team',        icon: '👥', label: 'Team'        },
-        { id: 'borrel',      icon: '🍻', label: 'Benzineborrel' },
+        { id: 'borrel',      icon: '',  label: 'Benzineborrel' },
       ]
     : session?.kind === 'borrel_team'
     ? [
-        { id: 'borrel',   icon: '🍻', label: 'Benzineborrel' },
+        { id: 'borrel',   icon: '',  label: 'Benzineborrel' },
         { id: 'messages', icon: '💬', label: 'Messages' },
       ]
     : [
@@ -264,11 +264,11 @@ function SignIn({ ctx }) {
 
   return (
     <div className="signin-wrap">
-      <h2>Welcome 👋</h2>
+      <h2>Dolgedraaid Lustrumreis 2027</h2>
       <p className="hint">Sign in as a team, or as Reisco.</p>
       <div className="switcher">
         <button className={mode === 'team' ? 'active' : ''} onClick={() => { setMode('team'); setError('') }}>Team</button>
-        <button className={mode === 'borrel' ? 'active' : ''} onClick={() => { setMode('borrel'); setError('') }}>🍻 Benzineborrel</button>
+        <button className={mode === 'borrel' ? 'active' : ''} onClick={() => { setMode('borrel'); setError('') }}>Benzineborrel</button>
         <button className={mode === 'org'  ? 'active' : ''} onClick={() => { setMode('org');  setError('') }}>Reisco</button>
       </div>
 
@@ -883,7 +883,7 @@ function Borrel({ ctx }) {
 
   return (
     <section>
-      <h2>🍻 Benzineborrel</h2>
+      <h2>Benzineborrel</h2>
       <p className="hint">Pilot-avond met stations. Organisator voert scores live in, iedereen ziet de tussenstand. Bekendmaking om 20:00.</p>
 
       {session.kind === 'borrel_team' && (
