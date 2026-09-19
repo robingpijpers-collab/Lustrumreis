@@ -332,10 +332,9 @@ function SignIn({ ctx }) {
         <div className="card">
           <p className="muted">The organizer posts daily challenges and messages.</p>
           <label className="field"><span>Organizer password</span>
-            <input type="password" value={orgPass} onChange={e => setOrgPass(e.target.value)} placeholder="lustrum" />
+            <input type="password" value={orgPass} onChange={e => setOrgPass(e.target.value)} />
           </label>
           <button className="btn full" onClick={loginOrg}>Sign in as organizer</button>
-          <p className="muted" style={{marginTop:10}}>Default password: <code>lustrum</code></p>
           {error && <div className="error">{error}</div>}
         </div>
       )}
@@ -866,7 +865,7 @@ function Team({ ctx, pointsFor }) {
 
 // ─── BORREL (PILOT EVENT) ────────────────────────────────────────────────────
 function Borrel({ ctx }) {
-  const { session, borrelTeams, borrelStations, borrelScores } = ctx
+  const { session, borrelTeams, borrelStations, borrelScores, signOut } = ctx
   const isOrg = session.kind === 'org'
   const [seeding, setSeeding] = useState(false)
 
@@ -885,6 +884,14 @@ function Borrel({ ctx }) {
     <section>
       <h2>🍻 Borrel</h2>
       <p className="hint">Pilot-avond met stations. Organisator voert scores live in, iedereen ziet de tussenstand. Bekendmaking om 20:00.</p>
+
+      {session.kind === 'borrel_team' && (
+        <div className="row" style={{marginBottom:12}}>
+          <span className="muted">Ingelogd als <b>{session.memberName}</b></span>
+          <div className="spacer" />
+          <button className="btn secondary small" onClick={signOut}>Sign out</button>
+        </div>
+      )}
 
       {isOrg && teamsList.length === 0 && (
         <div className="card">
