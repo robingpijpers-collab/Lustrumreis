@@ -63,11 +63,15 @@ section h2 { font-family: Georgia, serif; color: var(--green-deep); margin: 0 0 
   box-shadow: 0 -2px 12px rgba(0,0,0,.04);
 }
 .tabs button {
-  border: 0; background: transparent; padding: 10px 6px;
+  border: 0; background: transparent; padding: 10px 4px;
   color: var(--muted); display: flex; flex-direction: column;
   align-items: center; gap: 2px; font-size: 11px;
+  min-width: 0;
 }
 .tabs button .ic { font-size: 20px; line-height: 1 }
+.tabs button > span:last-child {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .tabs button.active { color: var(--green-deep); font-weight: 700 }
 
 /* ── Cards ── */
