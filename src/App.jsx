@@ -54,6 +54,12 @@ async function seedBorrel() {
   }
 }
 
+async function seedTeams() {
+  for (const t of BORREL_TEAMS_SEED) {
+    await setDoc(doc(db, 'teams', slugify(t.name)), { name: t.name, members: t.members, completed: {} })
+  }
+}
+
 function computeBorrelStandings(teamsList, stationsList, scoresMap) {
   const totals = Object.fromEntries(teamsList.map(t => [t.id, 0]))
   const perStation = {}
@@ -222,8 +228,6 @@ function SignIn({ ctx }) {
   const [teamId, setTeamId]         = useState('')
   const [memberName, setMemberName] = useState('')
   const [orgPass, setOrgPass]       = useState('')
-  const [newTeamName, setNewTeamName] = useState('')
-  const [members, setMembers]       = useState(['', '', '', ''])
   const [error, setError]           = useState('')
   const [borrelTeamId, setBorrelTeamId]     = useState('')
   const [borrelMemberName, setBorrelMemberName] = useState('')
@@ -243,18 +247,6 @@ function SignIn({ ctx }) {
     if (!teamId) { setError('Pick a team first.'); return }
     if (!memberName) { setError('Pick your name.'); return }
     setSession({ kind: 'team', teamId, memberName })
-  }
-
-  async function createTeam() {
-    const name = newTeamName.trim()
-    const mems = members.map(m => m.trim()).filter(Boolean)
-    if (!name) { setError('Give the team a name.'); return }
-    if (mems.length !== 4) { setError('Fill in all 4 members.'); return }
-    if (teamList.some(t => t.name.toLowerCase() === name.toLowerCase())) {
-      setError('A team with that name already exists.'); return
-    }
-    const r = await addDoc(collection(db, 'teams'), { name, members: mems, completed: {} })
-    setSession({ kind: 'team', teamId: r.id, memberName: mems[0] })
   }
 
   function loginOrg() {
@@ -289,17 +281,9 @@ function SignIn({ ctx }) {
             </label>
           )}
           <button className="btn full" onClick={loginTeam}>Sign in</button>
-          <div className="divider" />
-          <p className="muted">No team yet? Create one:</p>
-          <label className="field"><span>Team name</span>
-            <input value={newTeamName} onChange={e => setNewTeamName(e.target.value)} placeholder="e.g. The Paddling Panthers" />
-          </label>
-          {[0,1,2,3].map(i => (
-            <label key={i} className="field"><span>Member {i+1}</span>
-              <input value={members[i]} onChange={e => { const m=[...members]; m[i]=e.target.value; setMembers(m) }} />
-            </label>
-          ))}
-          <button className="btn full" style={{marginTop:4}} onClick={createTeam}>Create team + sign in</button>
+          {teamList.length === 0 && (
+            <p className="muted" style={{fontSize:12,marginTop:10}}>Nog geen teams geladen — Reisco moet eerst inloggen en de teams laden op het Team-tabblad.</p>
+          )}
           {error && <div className="error">{error}</div>}
         </div>
       )}
@@ -796,10 +780,17 @@ function Team({ ctx, pointsFor }) {
   const { session, teams, chugs, currentDay, setCurrentDay, signOut } = ctx
   const isOrg = session.kind === 'org'
   const team  = teams[session.teamId]
+  const [seeding, setSeeding] = useState(false)
 
   async function removeTeam(id) {
     if (!confirm('Remove this team?')) return
     await deleteDoc(doc(db, 'teams', id))
+  }
+
+  async function doSeedTeams() {
+    setSeeding(true)
+    try { await seedTeams() } catch (e) { alert('Laden mislukt: ' + e.message) }
+    setSeeding(false)
   }
 
   async function resetAll() {
@@ -822,6 +813,12 @@ function Team({ ctx, pointsFor }) {
             <p className="muted">Post challenges and broadcast messages.</p>
             <div className="divider" />
             <b>All teams</b>
+            {Object.keys(teams).length === 0 && (
+              <div style={{marginTop:8}}>
+                <p className="muted" style={{fontSize:12}}>Nog geen teams geladen.</p>
+                <button className="btn small" onClick={doSeedTeams} disabled={seeding}>{seeding ? 'Bezig…' : 'Teams laden'}</button>
+              </div>
+            )}
             {Object.values(teams).map(t => (
               <div key={t.id} className="row" style={{padding:'6px 0',borderBottom:'1px dashed var(--border)'}}>
                 <div style={{flex:1}}>
