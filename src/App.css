@@ -37,8 +37,14 @@ img, video { max-width: 100%; display: block }
 .app-title { font-family: Georgia, serif; font-size: 18px; color: var(--green-deep); font-weight: 700 }
 .subtitle  { font-size: 12px; color: var(--muted); margin-top: -2px }
 .spacer    { flex: 1 }
-.who       { font-size: 13px; color: var(--muted); text-align: right; line-height: 1.2 }
-.who b     { color: var(--ink); display: block; font-size: 14px }
+.who       {
+  font-size: 13px; color: var(--muted); text-align: right; line-height: 1.2;
+  min-width: 0; overflow: hidden;
+}
+.who b     {
+  color: var(--ink); display: block; font-size: 14px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 main {
   flex: 1; padding: 16px;
@@ -112,8 +118,9 @@ label.field textarea { min-height: 80px; resize: vertical }
 .signin-wrap { max-width: 460px; margin: 24px auto; padding: 0 16px }
 .switcher    { display: flex; gap: 6px; margin-bottom: 12px }
 .switcher button {
-  flex: 1; padding: 8px; border: 1px solid var(--border);
-  background: #fff; border-radius: 10px; font-size: 14px;
+  flex: 1; min-width: 0; padding: 8px 4px; border: 1px solid var(--border);
+  background: #fff; border-radius: 10px; font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .switcher button.active { background: var(--green); color: #fff; border-color: var(--green) }
 

@@ -192,6 +192,7 @@ export default function App() {
             : team ? <><b>{team.name}</b><span>{session.memberName} · Team</span></>
             : borrelTeam ? <><b>{borrelTeam.name}</b><span>{session.memberName} · Borrel</span></> : null}
         </div>
+        <button className="btn secondary small" style={{marginLeft:10}} onClick={handleSignOut}>Uitloggen</button>
       </header>
 
       <main>
@@ -865,7 +866,7 @@ function Team({ ctx, pointsFor }) {
 
 // ─── BORREL (PILOT EVENT) ────────────────────────────────────────────────────
 function Borrel({ ctx }) {
-  const { session, borrelTeams, borrelStations, borrelScores, signOut } = ctx
+  const { session, borrelTeams, borrelStations, borrelScores } = ctx
   const isOrg = session.kind === 'org'
   const [seeding, setSeeding] = useState(false)
 
@@ -886,11 +887,7 @@ function Borrel({ ctx }) {
       <p className="hint">Pilot-avond met stations. Organisator voert scores live in, iedereen ziet de tussenstand. Bekendmaking om 20:00.</p>
 
       {session.kind === 'borrel_team' && (
-        <div className="row" style={{marginBottom:12}}>
-          <span className="muted">Ingelogd als <b>{session.memberName}</b></span>
-          <div className="spacer" />
-          <button className="btn secondary small" onClick={signOut}>Sign out</button>
-        </div>
+        <p className="muted" style={{marginTop:-8,marginBottom:12}}>Ingelogd als <b>{session.memberName}</b></p>
       )}
 
       {isOrg && teamsList.length === 0 && (
