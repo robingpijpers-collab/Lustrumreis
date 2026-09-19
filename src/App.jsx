@@ -3,7 +3,7 @@ import { compressFile } from './compress'
 import { db, storage, auth } from './firebase'
 import {
   collection, addDoc, onSnapshot, query,
-  orderBy, serverTimestamp, deleteDoc, doc, updateDoc, getDocs
+  orderBy, serverTimestamp, deleteDoc, doc, updateDoc, getDocs, setDoc
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { signInAnonymously } from 'firebase/auth'
@@ -13,6 +13,62 @@ const ORG_PASSWORD = 'lustrum'
 const TOTAL_DAYS = 9
 const ONE_HOUR_MS = 60 * 60 * 1000
 const CHUGS_PER_FAST_WIN = 3
+
+// ─── BORREL PILOT: seed data ─────────────────────────────────────────────────
+// 8 competing teams from "Rally to Heaven 2027" line-up (Rolex - Camel Trophy
+// excluded — that's the organizer team).
+const BORREL_TEAMS_SEED = [
+  { name: 'BP Club Heineken', members: ['Freek Schoffelmeer', 'Ludo van der Velde', 'Mateo Overes', 'Tom Calis', 'Justin Hansen', 'Jip van der Teems', 'Sjaars 1', 'Sjaars 2'] },
+  { name: 'Team Hermès - Licor 43', members: ['Mats Voogelaar', 'Marten Buist', 'Silvan Dijkstra', 'Flemming Velde', 'Olivier Hart', 'Pieter Bondam', 'Lars Deenekamp', 'Florian Tilburg'] },
+  { name: 'Lucky Strike Omega Cup', members: ['Maarten de Ruiter', 'Stephan van Eijndhoven', 'Arnoud Rebel', 'Teun Schrikkema', 'Niels Rijk', 'Lex van den Herik', 'Dirk van Amelsfort', 'Justus Kerckhaert'] },
+  { name: 'Martini Fendi Forza', members: ['Darius Bakker', "Lasse l'Istelle", 'Bob ten Dolle', 'Bas Houben', 'Floris Kraaijeveld', 'Charlie Biesbroeck', "Daniel D'olivera de Marreiros", 'Mats Meijaard'] },
+  { name: 'Marlboro Michelin Racing', members: ['Thijs Ballieux', 'Mark Heezen', 'Clemens van Riet', 'Jules Immers', 'Bob Hagenbeek', 'Silvester Giesen', 'Sjaars 3', 'Sjaars 4'] },
+  { name: 'Johnny Walker - John Player Special', members: ['Florens Ballegooijen', 'Mo Gaff', 'Sjaars 5', 'Sjaars 6', 'Oscar Galjaard', 'Lucas Erkens', 'Quinten Allemans Hartog', 'Niels Fitton'] },
+  { name: 'Team Prada Pirelli', members: ['Merlijn Dries', 'Chen Nelen', 'Quentin de Groot', 'Jens Mekel', 'Darius Béränos', 'Tijn van Rijswijk', 'Florian Vreeburg', 'Jens de Bruijn'] },
+  { name: 'Land Rover Experience', members: ['Rob Coenen', 'Willibrord Grinwis', 'Thomas Hoos'] },
+]
+
+const BORREL_STATIONS_SEED = [
+  { order: 1,  name: 'Wiel vervangen', time: '17:15 - 17:45', scoreDirection: 'asc',  unit: 'seconden', desc: '50%: 2 teams tegelijk in actie, 2 teams kijken toe. Materiaal: Landrover van Hidde, assteunen, ratel, krik, stopwatch.' },
+  { order: 2,  name: 'Push-up maxxing', time: '17:15 - 17:45', scoreDirection: 'desc', unit: 'push-ups', desc: '50%: 2 teams tegelijk in actie, 2 teams kijken toe. Materiaal: yogamatje, eventueel een verhoging.' },
+  { order: 3,  name: 'Skadi startje', time: '17:45 - 18:05', scoreDirection: 'asc',  unit: 'seconden (gemiddeld)', desc: 'Collectief station. Materiaal: bier, aantal deelnemers x3.' },
+  { order: 4,  name: 'Feta eenhapsen', time: '18:05 - 18:30', scoreDirection: 'asc',  unit: 'seconden', desc: '50%: 2 teams tegelijk in actie, 2 teams kijken toe. Materiaal: 16 blokken feta.' },
+  { order: 5,  name: 'Olijfproppen en rakja drinken', time: '18:05 - 18:30', scoreDirection: 'desc', unit: 'olijven in 1 mond', desc: '50%: 2 teams tegelijk in actie, 2 teams kijken toe. Materiaal: 320 olijven, 8 flessen rakja.' },
+  { order: 6,  name: 'Ananas werpen', time: '', scoreDirection: 'desc', unit: 'meter', desc: 'Materiaal: 8 ananassen en handdoeken. Verste worp wint (bonusscore).' },
+  { order: 7,  name: 'Rook estafette', time: '18:30 - 19:00', scoreDirection: 'asc',  unit: 'seconden', desc: '2 rondes, 4 teams per keer. Stappen: 1. shagje draaien, 2. shag oproken, 3. powerpeuk.' },
+  { order: 8,  name: 'Borden darten van het balkon', time: '19:00 - 19:15', scoreDirection: 'desc', unit: 'borden door het gat', desc: '8 rondes. Materiaal: borden (4 per team), bouwfolie, cirkel op 2m hoogte (3 cirkels, bij missen terug naar 0, standaard op 1m).' },
+  { order: 9,  name: 'Rondje tapkeuten', time: '19:15 - 19:45', scoreDirection: 'asc',  unit: 'seconden', desc: 'Materiaal: emmer, bhs, skadistart.' },
+  { order: 10, name: 'Boksbal slaan', time: '', scoreDirection: 'desc', unit: 'punten (teamgemiddelde)', desc: 'Materiaal: boksbal, checkhelm, bokshandschoenen. Score is het teamgemiddelde.' },
+]
+
+function slugify(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+async function seedBorrel() {
+  for (const t of BORREL_TEAMS_SEED) {
+    await setDoc(doc(db, 'borrelTeams', slugify(t.name)), { name: t.name, members: t.members })
+  }
+  for (const s of BORREL_STATIONS_SEED) {
+    await setDoc(doc(db, 'borrelStations', slugify(s.name)), s)
+  }
+}
+
+function computeBorrelStandings(teamsList, stationsList, scoresMap) {
+  const totals = Object.fromEntries(teamsList.map(t => [t.id, 0]))
+  const perStation = {}
+  stationsList.forEach(st => {
+    const entries = teamsList
+      .map(t => ({ id: t.id, val: scoresMap[`${st.id}_${t.id}`]?.value }))
+      .filter(e => e.val !== undefined && e.val !== null && e.val !== '')
+    entries.sort((a, b) => st.scoreDirection === 'asc' ? a.val - b.val : b.val - a.val)
+    entries.forEach((e, i) => {
+      totals[e.id] += entries.length - i
+    })
+    perStation[st.id] = entries.map((e, i) => ({ ...e, rank: i + 1 }))
+  })
+  return { totals, perStation }
+}
 
 function loadSession() {
   try { return JSON.parse(localStorage.getItem('lustrum_session') || 'null') } catch { return null }
@@ -31,8 +87,16 @@ export default function App() {
   const [messages, setMessages]     = useState([])
   const [media, setMedia]           = useState([])
   const [chugs, setChugs]           = useState([])
+  const [borrelTeams, setBorrelTeams]       = useState({})
+  const [borrelStations, setBorrelStations] = useState({})
+  const [borrelScores, setBorrelScores]     = useState({})
 
   useEffect(() => { signInAnonymously(auth).catch(console.error) }, [])
+
+  useEffect(() => {
+    if (session?.kind === 'borrel_team') setCurrentTab('borrel')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.kind])
 
   useEffect(() => {
     const unsubs = [
@@ -49,6 +113,21 @@ export default function App() {
         setMedia(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
       onSnapshot(collection(db, 'chugs'), snap =>
         setChugs(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
+      onSnapshot(collection(db, 'borrelTeams'), snap => {
+        const t = {}
+        snap.forEach(d => { t[d.id] = { id: d.id, ...d.data() } })
+        setBorrelTeams(t)
+      }),
+      onSnapshot(collection(db, 'borrelStations'), snap => {
+        const t = {}
+        snap.forEach(d => { t[d.id] = { id: d.id, ...d.data() } })
+        setBorrelStations(t)
+      }),
+      onSnapshot(collection(db, 'borrelScores'), snap => {
+        const t = {}
+        snap.forEach(d => { t[d.id] = { id: d.id, ...d.data() } })
+        setBorrelScores(t)
+      }),
     ]
     return () => unsubs.forEach(u => u())
   }, [])
@@ -65,12 +144,36 @@ export default function App() {
 
   const ctx = {
     session, teams, challenges, messages, media, chugs,
+    borrelTeams, borrelStations, borrelScores,
     currentDay, setCurrentDay: handleChangeDay,
     setSession: handleSetSession, signOut: handleSignOut,
   }
 
   const isOrg = session?.kind === 'org'
   const team  = session?.kind === 'team' ? teams[session.teamId] : null
+  const borrelTeam = session?.kind === 'borrel_team' ? borrelTeams[session.teamId] : null
+
+  const tabsList = isOrg
+    ? [
+        { id: 'challenges',  icon: '🎯', label: 'Challenges'  },
+        { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
+        { id: 'messages',    icon: '💬', label: 'Messages'    },
+        { id: 'memories',    icon: '🎞️', label: 'Memories'  },
+        { id: 'team',        icon: '👥', label: 'Team'        },
+        { id: 'borrel',      icon: '🍻', label: 'Borrel'      },
+      ]
+    : session?.kind === 'borrel_team'
+    ? [
+        { id: 'borrel',   icon: '🍻', label: 'Borrel'   },
+        { id: 'messages', icon: '💬', label: 'Messages' },
+      ]
+    : [
+        { id: 'challenges',  icon: '🎯', label: 'Challenges'  },
+        { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
+        { id: 'messages',    icon: '💬', label: 'Messages'    },
+        { id: 'memories',    icon: '🎞️', label: 'Memories'  },
+        { id: 'team',        icon: '👥', label: 'Team'        },
+      ]
 
   if (!session) return <SignIn ctx={ctx} />
 
@@ -86,7 +189,8 @@ export default function App() {
         <div className="who">
           {isOrg
             ? <><b>Organizer</b><span>Posting as host</span></>
-            : team ? <><b>{team.name}</b><span>{session.memberName} · Team</span></> : null}
+            : team ? <><b>{team.name}</b><span>{session.memberName} · Team</span></>
+            : borrelTeam ? <><b>{borrelTeam.name}</b><span>{session.memberName} · Borrel</span></> : null}
         </div>
       </header>
 
@@ -96,16 +200,11 @@ export default function App() {
         {currentTab === 'messages'    && <Messages    ctx={ctx} />}
         {currentTab === 'memories'    && <Memories    ctx={ctx} />}
         {currentTab === 'team'        && <Team        ctx={ctx} pointsFor={pointsFor} />}
+        {currentTab === 'borrel'      && <Borrel      ctx={ctx} />}
       </main>
 
-      <nav className="tabs">
-        {[
-          { id: 'challenges',  icon: '🎯', label: 'Challenges'  },
-          { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
-          { id: 'messages',    icon: '💬', label: 'Messages'    },
-          { id: 'memories',    icon: '🎞️', label: 'Memories'  },
-          { id: 'team',        icon: '👥', label: 'Team'        },
-        ].map(t => (
+      <nav className="tabs" style={{ gridTemplateColumns: `repeat(${tabsList.length},1fr)` }}>
+        {tabsList.map(t => (
           <button key={t.id} className={currentTab === t.id ? 'active' : ''} onClick={() => setCurrentTab(t.id)}>
             <span className="ic">{t.icon}</span><span>{t.label}</span>
           </button>
@@ -117,7 +216,7 @@ export default function App() {
 
 // ─── SIGN IN ─────────────────────────────────────────────────────────────────
 function SignIn({ ctx }) {
-  const { teams, setSession } = ctx
+  const { teams, borrelTeams, setSession } = ctx
   const [mode, setMode]             = useState('team')
   const [teamId, setTeamId]         = useState('')
   const [memberName, setMemberName] = useState('')
@@ -125,9 +224,19 @@ function SignIn({ ctx }) {
   const [newTeamName, setNewTeamName] = useState('')
   const [members, setMembers]       = useState(['', '', '', ''])
   const [error, setError]           = useState('')
+  const [borrelTeamId, setBorrelTeamId]     = useState('')
+  const [borrelMemberName, setBorrelMemberName] = useState('')
 
   const teamList     = Object.values(teams)
   const selectedTeam = teams[teamId]
+  const borrelTeamList     = Object.values(borrelTeams).sort((a, b) => a.name.localeCompare(b.name))
+  const selectedBorrelTeam = borrelTeams[borrelTeamId]
+
+  function loginBorrel() {
+    if (!borrelTeamId) { setError('Kies eerst een team.'); return }
+    if (!borrelMemberName) { setError('Kies je naam.'); return }
+    setSession({ kind: 'borrel_team', teamId: borrelTeamId, memberName: borrelMemberName })
+  }
 
   function loginTeam() {
     if (!teamId) { setError('Pick a team first.'); return }
@@ -158,6 +267,7 @@ function SignIn({ ctx }) {
       <p className="hint">Sign in as a team, or as the organizer.</p>
       <div className="switcher">
         <button className={mode === 'team' ? 'active' : ''} onClick={() => { setMode('team'); setError('') }}>Team</button>
+        <button className={mode === 'borrel' ? 'active' : ''} onClick={() => { setMode('borrel'); setError('') }}>🍻 Borrel</button>
         <button className={mode === 'org'  ? 'active' : ''} onClick={() => { setMode('org');  setError('') }}>Organizer</button>
       </div>
 
@@ -189,6 +299,31 @@ function SignIn({ ctx }) {
             </label>
           ))}
           <button className="btn full" style={{marginTop:4}} onClick={createTeam}>Create team + sign in</button>
+          {error && <div className="error">{error}</div>}
+        </div>
+      )}
+
+      {mode === 'borrel' && (
+        <div className="card">
+          <p className="muted">Doe mee met de borrel-pilot. Kies je team en daarna jezelf.</p>
+          <label className="field"><span>Team</span>
+            <select value={borrelTeamId} onChange={e => { setBorrelTeamId(e.target.value); setBorrelMemberName('') }}>
+              <option value="">— kies een team —</option>
+              {borrelTeamList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </label>
+          {borrelTeamList.length === 0 && (
+            <p className="muted" style={{fontSize:12}}>Nog geen teams geladen — de organisator moet eerst inloggen en de teams &amp; stations laden op het Borrel-tabblad.</p>
+          )}
+          {selectedBorrelTeam && (
+            <label className="field"><span>Jouw naam</span>
+              <select value={borrelMemberName} onChange={e => setBorrelMemberName(e.target.value)}>
+                <option value="">— kies je naam —</option>
+                {selectedBorrelTeam.members.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </label>
+          )}
+          <button className="btn full" onClick={loginBorrel}>Inloggen</button>
           {error && <div className="error">{error}</div>}
         </div>
       )}
@@ -726,5 +861,131 @@ function Team({ ctx, pointsFor }) {
         {isOrg && <button className="btn warn" onClick={resetAll} style={{marginLeft:8}}>Reset all data</button>}
       </div>
     </section>
+  )
+}
+
+// ─── BORREL (PILOT EVENT) ────────────────────────────────────────────────────
+function Borrel({ ctx }) {
+  const { session, borrelTeams, borrelStations, borrelScores } = ctx
+  const isOrg = session.kind === 'org'
+  const [seeding, setSeeding] = useState(false)
+
+  const teamsList    = Object.values(borrelTeams).sort((a, b) => a.name.localeCompare(b.name))
+  const stationsList = Object.values(borrelStations).sort((a, b) => (a.order || 0) - (b.order || 0))
+  const { totals, perStation } = computeBorrelStandings(teamsList, stationsList, borrelScores)
+  const standings = teamsList.map(t => ({ t, pts: totals[t.id] || 0 })).sort((a, b) => b.pts - a.pts)
+
+  async function doSeed() {
+    setSeeding(true)
+    try { await seedBorrel() } catch (e) { alert('Laden mislukt: ' + e.message) }
+    setSeeding(false)
+  }
+
+  return (
+    <section>
+      <h2>🍻 Borrel</h2>
+      <p className="hint">Pilot-avond met stations. Organisator voert scores live in, iedereen ziet de tussenstand. Bekendmaking om 20:00.</p>
+
+      {isOrg && teamsList.length === 0 && (
+        <div className="card">
+          <b>Eerste keer instellen</b>
+          <p className="muted">Laad de 8 teams en 10 stations in de app.</p>
+          <button className="btn" onClick={doSeed} disabled={seeding}>{seeding ? 'Bezig…' : 'Teams & stations laden'}</button>
+        </div>
+      )}
+
+      <div className="card">
+        <b>Tussenstand</b>
+        {standings.length === 0
+          ? <p className="muted">Nog geen teams geladen.</p>
+          : standings.map((r, i) => (
+            <div key={r.t.id} className={`rank p${i + 1}`}>
+              <div className="pos">{i + 1}</div>
+              <div className="tname">{r.t.name}</div>
+              <div className="pts">{r.pts} pt</div>
+            </div>
+          ))
+        }
+      </div>
+
+      {stationsList.map(st => (
+        <StationCard
+          key={st.id} station={st} teamsList={teamsList} scoresMap={borrelScores}
+          isOrg={isOrg} rankInfo={perStation[st.id] || []} myTeamId={session.teamId}
+        />
+      ))}
+    </section>
+  )
+}
+
+function StationCard({ station, teamsList, scoresMap, isOrg, rankInfo, myTeamId }) {
+  const [desc, setDesc]     = useState(station.desc || '')
+  const [values, setValues] = useState(() => {
+    const v = {}
+    teamsList.forEach(t => { v[t.id] = scoresMap[`${station.id}_${t.id}`]?.value ?? '' })
+    return v
+  })
+  const [saving, setSaving] = useState(false)
+
+  async function saveDesc() {
+    await updateDoc(doc(db, 'borrelStations', station.id), { desc })
+  }
+
+  async function saveScores() {
+    setSaving(true)
+    try {
+      for (const t of teamsList) {
+        const val = values[t.id]
+        if (val === '' || val === undefined) continue
+        await setDoc(doc(db, 'borrelScores', `${station.id}_${t.id}`), {
+          stationId: station.id, teamId: t.id, value: Number(val), updatedAt: Date.now()
+        })
+      }
+    } catch (e) { alert('Opslaan mislukt: ' + e.message) }
+    setSaving(false)
+  }
+
+  const myResult = rankInfo.find(r => r.id === myTeamId)
+
+  return (
+    <div className="card">
+      <div className="row">
+        <b>{station.name}</b>
+        <div className="spacer" />
+        {station.time && <span className="pill soft">{station.time}</span>}
+      </div>
+      <div className="muted" style={{fontSize:12,marginTop:4}}>
+        {station.scoreDirection === 'asc' ? 'Laagste score wint' : 'Hoogste score wint'} · eenheid: {station.unit}
+      </div>
+
+      {isOrg ? (
+        <>
+          <label className="field" style={{marginTop:8}}><span>Uitleg voor teams</span>
+            <textarea value={desc} onChange={e => setDesc(e.target.value)} />
+          </label>
+          <button className="btn secondary small" onClick={saveDesc}>Uitleg opslaan</button>
+          <div className="divider" />
+          {teamsList.map(t => (
+            <label key={t.id} className="field" style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{flex:1}}>{t.name}</span>
+              <input
+                type="number" style={{width:110}} value={values[t.id]}
+                onChange={e => setValues(v => ({ ...v, [t.id]: e.target.value }))}
+                placeholder={station.unit}
+              />
+            </label>
+          ))}
+          <button className="btn small" onClick={saveScores} disabled={saving}>{saving ? 'Opslaan…' : 'Scores opslaan'}</button>
+        </>
+      ) : (
+        <>
+          <p className="muted" style={{marginTop:8,whiteSpace:'pre-wrap'}}>{station.desc || 'Uitleg volgt nog.'}</p>
+          {myResult
+            ? <span className="pill green">Jullie: plek {myResult.rank} ({myResult.val} {station.unit})</span>
+            : <span className="pill soft">Nog geen score ingevoerd</span>
+          }
+        </>
+      )}
+    </div>
   )
 }
