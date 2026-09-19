@@ -160,11 +160,11 @@ export default function App() {
         { id: 'messages',    icon: '💬', label: 'Messages'    },
         { id: 'memories',    icon: '🎞️', label: 'Memories'  },
         { id: 'team',        icon: '👥', label: 'Team'        },
-        { id: 'borrel',      icon: '🍻', label: 'Borrel'      },
+        { id: 'borrel',      icon: '🍻', label: 'Benzineborrel' },
       ]
     : session?.kind === 'borrel_team'
     ? [
-        { id: 'borrel',   icon: '🍻', label: 'Borrel'   },
+        { id: 'borrel',   icon: '🍻', label: 'Benzineborrel' },
         { id: 'messages', icon: '💬', label: 'Messages' },
       ]
     : [
@@ -188,9 +188,9 @@ export default function App() {
         <div className="spacer" />
         <div className="who">
           {isOrg
-            ? <><b>Organizer</b><span>Posting as host</span></>
+            ? <><b>Reisco</b><span>Posting as host</span></>
             : team ? <><b>{team.name}</b><span>{session.memberName} · Team</span></>
-            : borrelTeam ? <><b>{borrelTeam.name}</b><span>{session.memberName} · Borrel</span></> : null}
+            : borrelTeam ? <><b>{borrelTeam.name}</b><span>{session.memberName} · Benzineborrel</span></> : null}
         </div>
         <button className="btn secondary small" style={{marginLeft:10}} onClick={handleSignOut}>Uitloggen</button>
       </header>
@@ -265,11 +265,11 @@ function SignIn({ ctx }) {
   return (
     <div className="signin-wrap">
       <h2>Welcome 👋</h2>
-      <p className="hint">Sign in as a team, or as the organizer.</p>
+      <p className="hint">Sign in as a team, or as Reisco.</p>
       <div className="switcher">
         <button className={mode === 'team' ? 'active' : ''} onClick={() => { setMode('team'); setError('') }}>Team</button>
-        <button className={mode === 'borrel' ? 'active' : ''} onClick={() => { setMode('borrel'); setError('') }}>🍻 Borrel</button>
-        <button className={mode === 'org'  ? 'active' : ''} onClick={() => { setMode('org');  setError('') }}>Organizer</button>
+        <button className={mode === 'borrel' ? 'active' : ''} onClick={() => { setMode('borrel'); setError('') }}>🍻 Benzineborrel</button>
+        <button className={mode === 'org'  ? 'active' : ''} onClick={() => { setMode('org');  setError('') }}>Reisco</button>
       </div>
 
       {mode === 'team' && (
@@ -314,7 +314,7 @@ function SignIn({ ctx }) {
             </select>
           </label>
           {borrelTeamList.length === 0 && (
-            <p className="muted" style={{fontSize:12}}>Nog geen teams geladen — de organisator moet eerst inloggen en de teams &amp; stations laden op het Borrel-tabblad.</p>
+            <p className="muted" style={{fontSize:12}}>Nog geen teams geladen — Reisco moet eerst inloggen en de teams &amp; stations laden op het Benzineborrel-tabblad.</p>
           )}
           {selectedBorrelTeam && (
             <label className="field"><span>Jouw naam</span>
@@ -331,11 +331,11 @@ function SignIn({ ctx }) {
 
       {mode === 'org' && (
         <div className="card">
-          <p className="muted">The organizer posts daily challenges and messages.</p>
-          <label className="field"><span>Organizer password</span>
+          <p className="muted">Reisco posts daily challenges and messages.</p>
+          <label className="field"><span>Reisco password</span>
             <input type="password" value={orgPass} onChange={e => setOrgPass(e.target.value)} />
           </label>
-          <button className="btn full" onClick={loginOrg}>Sign in as organizer</button>
+          <button className="btn full" onClick={loginOrg}>Sign in as Reisco</button>
           {error && <div className="error">{error}</div>}
         </div>
       )}
@@ -369,7 +369,7 @@ function Challenges({ ctx }) {
       points: Number(ncPoints), postedAt: Date.now()
     })
     await addDoc(collection(db, 'messages'), {
-      from: 'Organizer',
+      from: 'Reisco',
       body: `📢 New challenge for Day ${ncDay}: ${ncTitle} (${ncPoints} pts). First team done within the hour earns ${CHUGS_PER_FAST_WIN} beer-forfeit cards!`,
       sentAt: serverTimestamp()
     })
@@ -633,14 +633,14 @@ function Messages({ ctx }) {
 
   async function postMessage() {
     if (!body.trim()) return
-    await addDoc(collection(db, 'messages'), { from: 'Organizer', body, sentAt: serverTimestamp() })
+    await addDoc(collection(db, 'messages'), { from: 'Reisco', body, sentAt: serverTimestamp() })
     setBody('')
   }
 
   return (
     <section>
       <h2>Messages</h2>
-      <p className="hint">Announcements from the organizer. Everyone sees them.</p>
+      <p className="hint">Announcements from Reisco. Everyone sees them.</p>
       {isOrg && (
         <div className="card">
           <b>New broadcast message</b>
@@ -813,12 +813,12 @@ function Team({ ctx, pointsFor }) {
 
   return (
     <section>
-      <h2>{isOrg ? 'Organizer' : 'Your team'}</h2>
+      <h2>{isOrg ? 'Reisco' : 'Your team'}</h2>
 
       <div className="card">
         {isOrg ? (
           <>
-            <b>You are the organizer</b>
+            <b>You are Reisco</b>
             <p className="muted">Post challenges and broadcast messages.</p>
             <div className="divider" />
             <b>All teams</b>
@@ -883,7 +883,7 @@ function Borrel({ ctx }) {
 
   return (
     <section>
-      <h2>🍻 Borrel</h2>
+      <h2>🍻 Benzineborrel</h2>
       <p className="hint">Pilot-avond met stations. Organisator voert scores live in, iedereen ziet de tussenstand. Bekendmaking om 20:00.</p>
 
       {session.kind === 'borrel_team' && (
