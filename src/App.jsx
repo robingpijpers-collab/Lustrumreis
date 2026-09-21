@@ -34,11 +34,11 @@ const BORREL_STATIONS_SEED = [
   { order: 3,  name: 'Skadi startje', time: '17:45 - 18:05', scoreDirection: 'asc',  unit: 'seconden (gemiddeld)', desc: 'Collectief station. Materiaal: bier, aantal deelnemers x3.' },
   { order: 4,  name: 'Feta eenhapsen', time: '18:05 - 18:30', scoreDirection: 'asc',  unit: 'seconden', desc: '50%: 2 teams tegelijk in actie, 2 teams kijken toe. Materiaal: 16 blokken feta.' },
   { order: 5,  name: 'Olijfproppen en rakja drinken', time: '18:05 - 18:30', scoreDirection: 'desc', unit: 'olijven in 1 mond', desc: '50%: 2 teams tegelijk in actie, 2 teams kijken toe. Materiaal: 320 olijven, 8 flessen rakja.' },
-  { order: 6,  name: 'Ananas werpen', time: '', scoreDirection: 'desc', unit: 'meter', desc: 'Materiaal: 8 ananassen en handdoeken. Verste worp wint (bonusscore).' },
-  { order: 7,  name: 'Rook estafette', time: '18:30 - 19:00', scoreDirection: 'asc',  unit: 'seconden', desc: '2 rondes, 4 teams per keer. Stappen: 1. shagje draaien, 2. shag oproken, 3. powerpeuk.' },
-  { order: 8,  name: 'Borden darten van het balkon', time: '19:00 - 19:15', scoreDirection: 'desc', unit: 'borden door het gat', desc: '8 rondes. Materiaal: borden (4 per team), bouwfolie, cirkel op 2m hoogte (3 cirkels, bij missen terug naar 0, standaard op 1m).' },
-  { order: 9,  name: 'Rondje tapkeuten', time: '19:15 - 19:45', scoreDirection: 'asc',  unit: 'seconden', desc: 'Materiaal: emmer, bhs, skadistart.' },
-  { order: 10, name: 'Boksbal slaan', time: '', scoreDirection: 'desc', unit: 'punten (teamgemiddelde)', desc: 'Materiaal: boksbal, checkhelm, bokshandschoenen. Score is het teamgemiddelde.' },
+  { order: 6,  name: 'Ananas werpen', time: '18:30 - 18:50', scoreDirection: 'desc', unit: 'meter', desc: 'Materiaal: 8 ananassen en handdoeken. Verste worp wint (bonusscore).' },
+  { order: 7,  name: 'Rook estafette', time: '18:50 - 19:20', scoreDirection: 'asc',  unit: 'seconden', desc: '2 rondes, 4 teams per keer. Stappen: 1. shagje draaien, 2. shag oproken, 3. powerpeuk.' },
+  { order: 8,  name: 'Borden darten van het balkon', time: '19:20 - 19:35', scoreDirection: 'desc', unit: 'borden door het gat', desc: '8 rondes. Materiaal: borden (4 per team), bouwfolie, cirkel op 2m hoogte (3 cirkels, bij missen terug naar 0, standaard op 1m).' },
+  { order: 9,  name: 'Boksbal slaan', time: '19:35 - 19:55', scoreDirection: 'desc', unit: 'punten (teamgemiddelde)', desc: 'Materiaal: boksbal, checkhelm, bokshandschoenen. Score is het teamgemiddelde.' },
+  { order: 10, name: 'Rondje tapkeuten', time: '19:55 - 20:25', scoreDirection: 'asc',  unit: 'seconden', desc: 'Materiaal: emmer, bhs, skadistart.' },
 ]
 
 function slugify(s) {
@@ -881,7 +881,7 @@ function Borrel({ ctx }) {
   return (
     <section>
       <h2>Benzineborrel</h2>
-      <p className="hint">Pilot-avond met stations. Organisator voert scores live in, iedereen ziet de tussenstand. Bekendmaking om 20:00.</p>
+      <p className="hint">Pilot-avond met stations. Organisator voert scores live in, iedereen ziet de tussenstand. Bekendmaking om 20:25.</p>
 
       {session.kind === 'borrel_team' && (
         <p className="muted" style={{marginTop:-8,marginBottom:12}}>Ingelogd als <b>{session.memberName}</b></p>
