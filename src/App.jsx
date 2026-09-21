@@ -45,6 +45,57 @@ function slugify(s) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
+// ─── BORREL PILOT: round schedule (who's active / watching, per station) ────
+const ALL_8 = BORREL_TEAMS_SEED.map(t => slugify(t.name))
+const [BP, TH, LS, MF, MM, JW, TP, LR] = ALL_8
+
+const BORREL_SCHEDULE = [
+  { stationSlug: slugify('Wiel vervangen'), label: 'Wiel vervangen', time: '17:15 - 17:45',
+    teams: [BP, JW, LR, LS],
+    rounds: [ { round: 1, active: [BP, JW] }, { round: 2, active: [LR, LS] } ] },
+  { stationSlug: slugify('Push-up maxxing'), label: 'Push-up maxxing', time: '17:15 - 17:45',
+    teams: [MM, MF, TH, TP],
+    rounds: [ { round: 1, active: [MM, MF] }, { round: 2, active: [TH, TP] } ] },
+  { stationSlug: slugify('Skadi startje'), label: 'Skadi startje', time: '17:45 - 18:05', collective: true },
+  { stationSlug: slugify('Feta eenhapsen'), label: 'Feta eenhapsen', time: '18:05 - 18:30',
+    teams: [JW, LR, MM, TH],
+    rounds: [ { round: 1, active: [JW, LR] }, { round: 2, active: [MM, TH] } ] },
+  { stationSlug: slugify('Olijfproppen en rakja drinken'), label: 'Olijfproppen en rakja drinken', time: '18:05 - 18:30',
+    teams: [BP, LS, MF, TP],
+    rounds: [ { round: 1, active: [BP, LS] }, { round: 2, active: [MF, TP] } ] },
+  { stationSlug: slugify('Ananas werpen'), label: 'Ananas werpen', time: '18:30 - 18:50',
+    teams: ALL_8,
+    rounds: [ { round: 1, active: [BP, LR, MM, TP] }, { round: 2, active: [JW, LS, MF, TH] } ] },
+  { stationSlug: slugify('Rook estafette'), label: 'Rook estafette', time: '18:50 - 19:20',
+    teams: ALL_8,
+    rounds: [ { round: 1, active: [BP, LS, TH, TP] }, { round: 2, active: [JW, LR, MM, MF] } ] },
+  { stationSlug: slugify('Borden darten van het balkon'), label: 'Borden darten van het balkon', time: '19:20 - 19:35',
+    teams: ALL_8,
+    rounds: [BP, JW, LR, LS, MM, MF, TH, TP].map((t, i) => ({ round: i + 1, active: [t] })) },
+  { stationSlug: slugify('Boksbal slaan'), label: 'Boksbal slaan', time: '19:35 - 19:55', collective: true },
+  { stationSlug: slugify('Rondje tapkeuten'), label: 'Rondje tapkeuten', time: '19:55 - 20:25',
+    teams: ALL_8,
+    rounds: [ { round: 1, active: [BP, TP] }, { round: 2, active: [JW, MF] }, { round: 3, active: [LR, TH] }, { round: 4, active: [LS, MM] } ] },
+]
+
+function teamName(teamId) {
+  const t = BORREL_TEAMS_SEED.find(t => slugify(t.name) === teamId)
+  return t?.name || teamId
+}
+
+function getPersonalSchedule(teamId) {
+  return BORREL_SCHEDULE.map(entry => {
+    if (entry.collective) return { ...entry, involved: true, rounds: [{ round: null, role: 'mee' }] }
+    if (!entry.teams.includes(teamId)) return { ...entry, involved: false, rounds: [] }
+    const rounds = entry.rounds.map(r => {
+      const active = r.active.includes(teamId)
+      const opponents = r.active.filter(id => id !== teamId).map(teamName)
+      return { round: r.round, role: active ? 'actief' : 'kijken', opponents }
+    })
+    return { ...entry, involved: true, rounds }
+  }).filter(e => e.involved)
+}
+
 async function seedBorrel() {
   for (const t of BORREL_TEAMS_SEED) {
     await setDoc(doc(db, 'borrelTeams', slugify(t.name)), { name: t.name, members: t.members })
@@ -884,7 +935,10 @@ function Borrel({ ctx }) {
       <p className="hint">Pilot-avond met stations. Organisator voert scores live in, iedereen ziet de tussenstand. Bekendmaking om 20:25.</p>
 
       {session.kind === 'borrel_team' && (
-        <p className="muted" style={{marginTop:-8,marginBottom:12}}>Ingelogd als <b>{session.memberName}</b></p>
+        <>
+          <p className="muted" style={{marginTop:-8,marginBottom:12}}>Ingelogd als <b>{session.memberName}</b></p>
+          <PersonalSchedule teamId={session.teamId} />
+        </>
       )}
 
       {isOrg && teamsList.length === 0 && (
@@ -916,6 +970,38 @@ function Borrel({ ctx }) {
         />
       ))}
     </section>
+  )
+}
+
+function PersonalSchedule({ teamId }) {
+  const schedule = getPersonalSchedule(teamId)
+  return (
+    <div className="card">
+      <b>Jouw programma</b>
+      <p className="muted" style={{fontSize:12,marginBottom:8}}>Wanneer ben je actief en wanneer kijk je toe.</p>
+      {schedule.map(entry => (
+        <div key={entry.stationSlug} style={{marginBottom:10}}>
+          <div className="row">
+            <b style={{fontSize:14}}>{entry.label}</b>
+            <div className="spacer" />
+            <span className="pill soft">{entry.time}</span>
+          </div>
+          {entry.collective
+            ? <div className="muted" style={{fontSize:13}}>Iedereen doet gelijktijdig mee</div>
+            : entry.rounds.map(r => (
+              <div key={r.round} className="row" style={{fontSize:13,marginTop:2,flexWrap:'wrap',gap:6}}>
+                <span className={r.role === 'actief' ? 'pill green' : 'pill soft'}>
+                  Ronde {r.round}: {r.role === 'actief' ? 'Actief' : 'Kijken'}
+                </span>
+                {r.role === 'actief' && r.opponents.length > 0 && (
+                  <span className="muted">tegen {r.opponents.join(' & ')}</span>
+                )}
+              </div>
+            ))
+          }
+        </div>
+      ))}
+    </div>
   )
 }
 
