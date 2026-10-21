@@ -23,14 +23,14 @@ export async function compressVideo(file, onProgress) {
     onProgress?.(Math.min(99, Math.round(progress * 100)))
   })
 
-  // Load single-threaded core from CDN (no SharedArrayBuffer needed)
+  // @ffmpeg/core is the single-threaded build (no SharedArrayBuffer needed)
   await ffmpeg.load({
     coreURL: await toBlobURL(
-      'https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/umd/ffmpeg-core.js',
+      'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
       'text/javascript'
     ),
     wasmURL: await toBlobURL(
-      'https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/umd/ffmpeg-core.wasm',
+      'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm',
       'application/wasm'
     ),
   })
@@ -59,6 +59,9 @@ export async function compressVideo(file, onProgress) {
   return new File([data.buffer], 'compressed.mp4', { type: 'video/mp4' })
 }
 
+// Storage rules allow files under 50 MB, so stay safely below that
+const MAX_UNCOMPRESSED_BYTES = 45 * 1024 * 1024
+
 // ─── SMART COMPRESS ──────────────────────────────────────────────────────────
 // Auto-picks image or video compression based on file type
 export async function compressFile(file, onProgress) {
@@ -69,7 +72,13 @@ export async function compressFile(file, onProgress) {
     return result
   }
   if (file.type.startsWith('video/')) {
-    return await compressVideo(file, onProgress)
+    try {
+      return await compressVideo(file, onProgress)
+    } catch (e) {
+      console.error('Video compression failed', e)
+      if (file.size <= MAX_UNCOMPRESSED_BYTES) { onProgress?.(100); return file }
+      throw new Error('Video comprimeren mislukte en het bestand is te groot om zo te uploaden (max 45 MB). Probeer een kortere video.')
+    }
   }
   return file // unknown type, return as-is
 }
