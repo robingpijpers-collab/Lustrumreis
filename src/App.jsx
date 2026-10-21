@@ -713,13 +713,15 @@ function Memories({ ctx }) {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress]   = useState(0)
   const [assignSelections, setAssignSelections] = useState({})
+  const [viewing, setViewing] = useState(null)
+  const [showAll, setShowAll] = useState(false)
 
   const myUnassignedChugs = !isOrg
     ? chugs.filter(c => c.fromTeamId === session.teamId && c.status === 'unassigned')
     : []
 
   const todayMedia = media
-    .filter(m => m.dayUploaded === currentDay)
+    .filter(m => showAll || m.dayUploaded === currentDay)
     .sort((a,b) => {
       const ta = a.uploadedAt?.seconds ?? 0
       const tb = b.uploadedAt?.seconds ?? 0
@@ -812,15 +814,21 @@ function Memories({ ctx }) {
       </div>
 
       <div className="card">
-        <b>Today — Day {currentDay}</b>
-        <span className="muted" style={{marginLeft:8,fontSize:13}}>{todayMedia.length} item{todayMedia.length !== 1 ? 's' : ''}</span>
+        <div className="row">
+          <b>{showAll ? 'All days' : `Today — Day ${currentDay}`}</b>
+          <span className="muted" style={{fontSize:13}}>{todayMedia.length} item{todayMedia.length !== 1 ? 's' : ''}</span>
+          <div className="spacer" />
+          <button className="btn secondary small" onClick={() => setShowAll(v => !v)}>
+            {showAll ? `Only day ${currentDay}` : 'Show all days'}
+          </button>
+        </div>
         <div className="thumb-grid">
           {todayMedia.length === 0
-            ? <p className="muted" style={{gridColumn:'1/-1'}}>No photos yet today.</p>
+            ? <p className="muted" style={{gridColumn:'1/-1'}}>{showAll ? 'No photos yet.' : 'No photos yet today.'}</p>
             : todayMedia.map(m => (
-              <div key={m.id} className={`thumb${m.type === 'video' ? ' video' : ''}`}>
+              <div key={m.id} className={`thumb tappable${m.type === 'video' ? ' video' : ''}`} onClick={() => setViewing(m)}>
                 {m.type === 'video'
-                  ? <video src={m.url} muted playsInline />
+                  ? <video src={`${m.url}#t=0.1`} preload="metadata" muted playsInline />
                   : <img src={m.url} alt={m.caption || ''} loading="lazy" />
                 }
                 {m.caption && <div className="cap">{m.caption}</div>}
@@ -829,6 +837,22 @@ function Memories({ ctx }) {
           }
         </div>
       </div>
+
+      {viewing && (
+        <div className="viewer" onClick={() => setViewing(null)}>
+          <button className="viewer-close" onClick={() => setViewing(null)}>×</button>
+          <div className="viewer-body" onClick={e => e.stopPropagation()}>
+            {viewing.type === 'video'
+              ? <video key={viewing.id} src={viewing.url} controls autoPlay playsInline />
+              : <img src={viewing.url} alt={viewing.caption || ''} />
+            }
+            <div className="viewer-cap">
+              {viewing.caption && <div>{viewing.caption}</div>}
+              <div className="muted">{teams[viewing.teamId]?.name || ''}{viewing.memberName ? ` · ${viewing.memberName}` : ''} · Day {viewing.dayUploaded}</div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
