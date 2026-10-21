@@ -6,7 +6,7 @@ import {
   orderBy, serverTimestamp, deleteDoc, doc, updateDoc, getDocs, setDoc
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { signInAnonymously } from 'firebase/auth'
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth'
 import './App.css'
 
 const ORG_PASSWORD = 'lustrum'
@@ -148,14 +148,21 @@ export default function App() {
   const [borrelStations, setBorrelStations] = useState({})
   const [borrelScores, setBorrelScores]     = useState({})
 
-  useEffect(() => { signInAnonymously(auth).catch(console.error) }, [])
+  const [authReady, setAuthReady] = useState(false)
+
+  useEffect(() => {
+    signInAnonymously(auth).catch(console.error)
+    return onAuthStateChanged(auth, user => setAuthReady(!!user))
+  }, [])
 
   useEffect(() => {
     if (session?.kind === 'borrel_team') setCurrentTab('borrel')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.kind])
 
+  // Firestore rules require auth, so only subscribe once anonymous sign-in has completed
   useEffect(() => {
+    if (!authReady) return
     const unsubs = [
       onSnapshot(collection(db, 'teams'), snap => {
         const t = {}
@@ -187,7 +194,7 @@ export default function App() {
       }),
     ]
     return () => unsubs.forEach(u => u())
-  }, [])
+  }, [authReady])
 
   function handleSetSession(s) { saveSession(s); setSession(s) }
   function handleSignOut() { saveSession(null); setSession(null); setCurrentTab('challenges') }
